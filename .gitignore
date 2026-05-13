@@ -3,6 +3,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# Local environment config (DO NOT COMMIT)
+src/main/resources/application-local.properties
+
 ### STS ###
 .apt_generated
 .classpath
