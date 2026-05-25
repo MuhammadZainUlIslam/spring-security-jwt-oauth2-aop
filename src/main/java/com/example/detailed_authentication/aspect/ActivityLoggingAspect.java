@@ -19,7 +19,7 @@ public class ActivityLoggingAspect {
     private final HttpServletRequest request;
 
     // =========================================================
-    // COMMON METHODS
+    // COMMON HELPERS
     // =========================================================
 
     private String getCurrentUsername() {
@@ -34,13 +34,12 @@ public class ActivityLoggingAspect {
             return authentication.getName();
         }
 
-        return "Anonymous";
+        return "anonymous";
     }
 
     private String getClientIp() {
 
-        String forwarded =
-                request.getHeader("X-Forwarded-For");
+        String forwarded = request.getHeader("X-Forwarded-For");
 
         if (forwarded != null && !forwarded.isBlank()) {
             return forwarded.split(",")[0];
@@ -50,19 +49,16 @@ public class ActivityLoggingAspect {
     }
 
     // =========================================================
-    // AUTH CONTROLLER LOGGING
+    // AUTH API ACCESS
     // =========================================================
 
     @Before("""
             execution(* com.example.detailed_authentication.controller.AuthController.*(..))
             """)
-    public void logAuthControllerHit(JoinPoint joinPoint) {
+    public void logAuthApiAccess(JoinPoint joinPoint) {
 
-        log.info("""    
-                ================= AUTH API HIT =================
-                Endpoint Method: {} ->> Request URI : {} ->> HTTP Method: {} ->>Client IP: {}
-                =================================================
-                """,
+        log.info(
+                "AUTH_API_ACCESS | endpoint={} | uri={} | method={} | ip={}",
                 joinPoint.getSignature().getName(),
                 request.getRequestURI(),
                 request.getMethod(),
@@ -74,22 +70,16 @@ public class ActivityLoggingAspect {
     // LOGIN SUCCESS
     // =========================================================
 
-    @AfterReturning(
-            pointcut = """
-                    execution(* com.example.detailed_authentication.service.AuthService.login(..))
-                    """,
-            returning = "result"
-    )
-    public void logLoginSuccess(JoinPoint joinPoint, Object result) {
+    @AfterReturning("""
+            execution(* com.example.detailed_authentication.service.AuthService.login(..))
+            """)
+    public void logLoginSuccess(JoinPoint joinPoint) {
 
-        log.info("""  
-                ================= LOGIN SUCCESS =================
-                Method: {} ->> Username: {} ->>IP Address      : {}
-                =================================================
-                """,
-                joinPoint.getSignature().getName(),
+        log.info(
+                "LOGIN_SUCCESS | user={} | ip={} | serviceMethod={}",
                 getCurrentUsername(),
-                getClientIp()
+                getClientIp(),
+                joinPoint.getSignature().getName()
         );
     }
 
@@ -97,23 +87,15 @@ public class ActivityLoggingAspect {
     // REGISTRATION SUCCESS
     // =========================================================
 
-    @AfterReturning(
-            pointcut = """
-                    execution(* com.example.detailed_authentication.service.AuthService.registerLocalUser(..))
-                    """,
-            returning = "result"
-    )
-    public void logRegistrationSuccess(JoinPoint joinPoint, Object result) {
+    @AfterReturning("""
+            execution(* com.example.detailed_authentication.service.AuthService.registerLocalUser(..))
+            """)
+    public void logRegistrationSuccess(JoinPoint joinPoint) {
 
-        log.info("""
-                        
-                ============== REGISTRATION SUCCESS ==============
-                Method          : {}
-                IP Address      : {}
-                =================================================
-                """,
-                joinPoint.getSignature().getName(),
-                getClientIp()
+        log.info(
+                "REGISTRATION_SUCCESS | ip={} | serviceMethod={}",
+                getClientIp(),
+                joinPoint.getSignature().getName()
         );
     }
 
@@ -121,25 +103,16 @@ public class ActivityLoggingAspect {
     // OAUTH2 SUCCESS
     // =========================================================
 
-    @AfterReturning(
-            pointcut = """
-                    execution(* com.example.detailed_authentication.service.OAuth2Service.*(..))
-                    """,
-            returning = "result"
-    )
-    public void logOAuth2Success(JoinPoint joinPoint, Object result) {
+    @AfterReturning("""
+            execution(* com.example.detailed_authentication.service.OAuth2Service.*(..))
+            """)
+    public void logOAuth2Success(JoinPoint joinPoint) {
 
-        log.info("""
-                        
-                ================= OAUTH2 SUCCESS =================
-                Method          : {}
-                Username        : {}
-                IP Address      : {}
-                =================================================
-                """,
-                joinPoint.getSignature().getName(),
+        log.info(
+                "OAUTH2_SUCCESS | user={} | ip={} | serviceMethod={}",
                 getCurrentUsername(),
-                getClientIp()
+                getClientIp(),
+                joinPoint.getSignature().getName()
         );
     }
 
@@ -153,26 +126,18 @@ public class ActivityLoggingAspect {
             """)
     public void logSecureApiAccess(JoinPoint joinPoint) {
 
-        log.info("""
-                        
-                ================= SECURE API HIT =================
-                API Method      : {}
-                Username        : {}
-                Request URI     : {}
-                HTTP Method     : {}
-                IP Address      : {}
-                =================================================
-                """,
-                joinPoint.getSignature().toShortString(),
+        log.info(
+                "SECURE_API_ACCESS | user={} | uri={} | method={} | controllerMethod={} | ip={}",
                 getCurrentUsername(),
                 request.getRequestURI(),
                 request.getMethod(),
+                joinPoint.getSignature().toShortString(),
                 getClientIp()
         );
     }
 
     // =========================================================
-    // SERVICE EXECUTION TIME
+    // EXECUTION TIME
     // =========================================================
 
     @Around("""
@@ -182,20 +147,14 @@ public class ActivityLoggingAspect {
     public Object logExecutionTime(ProceedingJoinPoint joinPoint)
             throws Throwable {
 
-        long startTime = System.currentTimeMillis();
+        long start = System.currentTimeMillis();
 
         Object result = joinPoint.proceed();
 
-        long executionTime =
-                System.currentTimeMillis() - startTime;
+        long executionTime = System.currentTimeMillis() - start;
 
-        log.info("""
-                        
-                ================= METHOD EXECUTION =================
-                Method          : {}
-                Execution Time  : {} ms
-                ====================================================
-                """,
+        log.info(
+                "METHOD_EXECUTION | method={} | executionTimeMs={}",
                 joinPoint.getSignature().toShortString(),
                 executionTime
         );
@@ -214,23 +173,15 @@ public class ActivityLoggingAspect {
                     """,
             throwing = "ex"
     )
-    public void logExceptions(JoinPoint joinPoint, Exception ex) {
+    public void logException(JoinPoint joinPoint, Exception ex) {
 
-        log.error("""
-                        
-                ================= EXCEPTION OCCURRED =================
-                Method          : {}
-                Username        : {}
-                Request URI     : {}
-                Error Message   : {}
-                Exception Type  : {}
-                ======================================================
-                """,
-                joinPoint.getSignature().toShortString(),
+        log.error(
+                "APPLICATION_EXCEPTION | user={} | uri={} | method={} | exception={} | message={}",
                 getCurrentUsername(),
                 request.getRequestURI(),
-                ex.getMessage(),
-                ex.getClass().getSimpleName()
+                joinPoint.getSignature().toShortString(),
+                ex.getClass().getSimpleName(),
+                ex.getMessage()
         );
     }
 }
